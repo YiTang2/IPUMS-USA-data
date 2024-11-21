@@ -22,6 +22,7 @@ library(tidyverse)
 library(knitr)
 library(labelled)
 
+
 ipums_extract <- read_csv("usa_00001.csv")
 
 ipums_extract <- 
@@ -29,23 +30,18 @@ ipums_extract <-
   select(STATEICP, EDUCD) |>
   to_factor()
 
-# Calculate counts for respondents with doctoral degrees in each state
 doctoral_counts <- ipums_extract |>
   filter(EDUCD == 116) |>  # Filter rows with "Doctoral degree"
   group_by(STATEICP) |>
   summarise(doctoral_count = n()) |>  # Count respondents with a doctoral degree in each state
   ungroup()
 
-# Display formatted table
-kable(doctoral_counts, col.names = c("State (ICP Code)", "Doctoral Degree Count"),
-      caption = "Counts of Respondents with Doctoral Degrees by State")
-
 ```
 
 
 # Introduction
 
-We uses R packages [@citeR] to clean and analyze the dataset, including libraries from haven [@citehaven], tidyverse [@citetidyverse] and labelled [@citelabelled]. The data we used is from IPUMS [@citedata].
+We uses R packages [@citeR] to clean and analyze the dataset, including libraries from `haven` [@citehaven], `tidyverse` [@citetidyverse], `knitr` [@citeknitr] and `labelled` [@citelabelled]. The data we used is from IPUMS [@citedata].
 
 # A brief overview of the ratio estimators approach
 
@@ -54,49 +50,57 @@ The ratio estimator is a method used in survey sampling to improve estimation ac
 # Estimates and the Actual Number of Respondents
 
 ```{r}
+#| label: fig-data-summary
+#| fig-cap: "Comparison of Actual and Estimated Respondents by State"
+#| echo: false
 #| warning: false
 #| message: false
-#| echo: false
 
-# Given total count of respondents in California
-total_respondents_california <- 391171
+# Get the total count of respondents in California
+total_respondents_california <- 391171  # Given value for California
 
 # Get the number of respondents with a doctoral degree in California
 doctoral_respondents_california <- doctoral_counts |>
-  filter(STATEICP == "71") |>  # California's ICP code
+  filter(STATEICP == "71") |>
   pull(doctoral_count)
 
 # Calculate the ratio of doctoral degree holders to total respondents in California
 doctoral_ratio_california <- doctoral_respondents_california / total_respondents_california
 
-# Estimate the total count of respondents in each state using the ratio estimator
+# Get the total count of respondents in each state using the ratio estimator
 estimated_total_counts <- doctoral_counts |>
-  mutate(estimated_total = round(doctoral_count / doctoral_ratio_california, 2))  # Round to 2 decimal places
-
-# Calculate the actual total number of respondents in each state
-actual_counts <- ipums_extract |>
-  group_by(STATEICP) |>
-  summarise(actual_total = round(n(), 2)) |>  # Count actual number of respondents and round to 2 decimal places
-  ungroup()
+  mutate(estimated_total = doctoral_count / doctoral_ratio_california)
 
 # Merge the estimated totals with actual respondent counts
+actual_counts <- ipums_extract |>
+  group_by(STATEICP) |>
+  summarise(actual_total = n()) |>  # Count actual number of respondents in each state
+  ungroup()
+
+
+# Prepare the data
 comparison <- doctoral_counts |>
   left_join(actual_counts, by = "STATEICP") |>
-  left_join(estimated_total_counts, by = "STATEICP") |>
   mutate(
-    actual_total = round(actual_total, 2),  # Ensure rounding
-    estimated_total = round(estimated_total, 2)  # Ensure rounding
+    estimated_total = round(doctoral_count / doctoral_ratio_california, 2),
+    actual_total = round(actual_total, 2)
   ) |>
   select(STATEICP, actual_total, estimated_total)
 
-# Display the comparison table in a formatted way
-kable(
-  comparison,
-  col.names = c("State (ICP Code)", "Actual Respondent Count", "Estimated Respondent Count"),
-  caption = "Comparison of Actual vs. Estimated Respondent Counts by State"
-)
+# Plot the comparison
+ggplot(comparison, aes(x = STATEICP)) +
+  geom_bar(aes(y = actual_total), stat = "identity", fill = "blue", alpha = 0.6, width = 0.6) +
+  geom_point(aes(y = estimated_total), color = "red", size = 3) +
+  geom_line(aes(y = estimated_total, group = 1), color = "red", linetype = "dashed") +
+  labs(
+    x = "State (ICP Code)",
+    y = "Number of Respondents"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 ```
-We calculates and compares the actual and estimated total respondent counts for each state using a ratio estimation method. It assumes the ratio of doctoral degree holders to total respondents in California applies to other states. The actual counts are derived from the dataset, while the estimated counts are based on this ratio. The final table highlights discrepancies between actual and estimated counts, helping evaluate the accuracy and limitations of the ratio estimation approach.
+From @fig-data-summary, we calculates and compares the actual and estimated total respondent counts for each state using a ratio estimation method. It assumes the ratio of doctoral degree holders to total respondents in California applies to other states. The actual counts are derived from the dataset, while the estimated counts are based on this ratio. The final figure highlights discrepancies between actual and estimated counts, helping evaluate the accuracy and limitations of the ratio estimation approach.
 
 
 # Explanation of why they are different

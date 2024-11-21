@@ -8,7 +8,7 @@ Data from IPUMS USA's 2022 American Community Survey (ACS) is analyzed in this r
 
 The repo is structured as:
 
--   `paper` contains the files used to generate the paper, including the Quarto document and reference bibliography file, as well as the PDF of the paper. 
+-   `paper` contains the files used to generate the paper, including the Quarto document, the PDF, and the reference bibliography file. 
 
 
 
