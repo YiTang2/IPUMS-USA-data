@@ -1,0 +1,125 @@
+---
+title: "Data Collection, Ratio Estimation, and Discrepancies: Analyzing ACS Respondent Counts with IPUMS USA"
+author: 
+  - Yi Tang
+  - Jin Zhang
+  - Siyuan Lu
+thanks: "Code and data are available at: https://github.com/YiTang2/IPUMS-USA-data.git"
+date: 3 October 2024
+date-format: long
+abstract: "The number of respondents in each state with a doctorate as their highest level of education is examined in this document using data from the 2022 ACS IPUMS. Using data from California, we use the ratio estimators approach to estimate the total number of respondents in each state."
+format: pdf
+number-sections: true
+bibliography: references.bib
+---
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+library(haven)
+library(tidyverse)
+library(knitr)
+library(labelled)
+
+ipums_extract <- read_csv("usa_00001.csv")
+
+ipums_extract <- 
+  ipums_extract |>
+  select(STATEICP, EDUCD) |>
+  to_factor()
+
+# Calculate counts for respondents with doctoral degrees in each state
+doctoral_counts <- ipums_extract |>
+  filter(EDUCD == 116) |>  # Filter rows with "Doctoral degree"
+  group_by(STATEICP) |>
+  summarise(doctoral_count = n()) |>  # Count respondents with a doctoral degree in each state
+  ungroup()
+
+# Display formatted table
+kable(doctoral_counts, col.names = c("State (ICP Code)", "Doctoral Degree Count"),
+      caption = "Counts of Respondents with Doctoral Degrees by State")
+
+```
+
+
+# Introduction
+
+We uses R packages [@citeR] to clean and analyze the dataset, including libraries from haven [@citehaven], tidyverse [@citetidyverse] and labelled [@citelabelled]. The data we used is from IPUMS [@citedata].
+
+# A brief overview of the ratio estimators approach
+
+The ratio estimator is a method used in survey sampling to improve estimation accuracy by leveraging a known relationship between two variables. This method calculates the ratio of a particular attribute to the total population for a known subset. The ratio is then applied to other subsets to approximate totals, assuming similar correlations exist across the entire population. It is especially helpful when the precise population size is unknown but a sample yields proportional connections.
+
+# Estimates and the Actual Number of Respondents
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+# Given total count of respondents in California
+total_respondents_california <- 391171
+
+# Get the number of respondents with a doctoral degree in California
+doctoral_respondents_california <- doctoral_counts |>
+  filter(STATEICP == "71") |>  # California's ICP code
+  pull(doctoral_count)
+
+# Calculate the ratio of doctoral degree holders to total respondents in California
+doctoral_ratio_california <- doctoral_respondents_california / total_respondents_california
+
+# Estimate the total count of respondents in each state using the ratio estimator
+estimated_total_counts <- doctoral_counts |>
+  mutate(estimated_total = round(doctoral_count / doctoral_ratio_california, 2))  # Round to 2 decimal places
+
+# Calculate the actual total number of respondents in each state
+actual_counts <- ipums_extract |>
+  group_by(STATEICP) |>
+  summarise(actual_total = round(n(), 2)) |>  # Count actual number of respondents and round to 2 decimal places
+  ungroup()
+
+# Merge the estimated totals with actual respondent counts
+comparison <- doctoral_counts |>
+  left_join(actual_counts, by = "STATEICP") |>
+  left_join(estimated_total_counts, by = "STATEICP") |>
+  mutate(
+    actual_total = round(actual_total, 2),  # Ensure rounding
+    estimated_total = round(estimated_total, 2)  # Ensure rounding
+  ) |>
+  select(STATEICP, actual_total, estimated_total)
+
+# Display the comparison table in a formatted way
+kable(
+  comparison,
+  col.names = c("State (ICP Code)", "Actual Respondent Count", "Estimated Respondent Count"),
+  caption = "Comparison of Actual vs. Estimated Respondent Counts by State"
+)
+```
+We calculates and compares the actual and estimated total respondent counts for each state using a ratio estimation method. It assumes the ratio of doctoral degree holders to total respondents in California applies to other states. The actual counts are derived from the dataset, while the estimated counts are based on this ratio. The final table highlights discrepancies between actual and estimated counts, helping evaluate the accuracy and limitations of the ratio estimation approach.
+
+
+# Explanation of why they are different
+
+The estimated total number of respondents in each state using the ratio estimator can differ from the actual count due to several factors:
+
+1. Assumption of Similarity: The ratio estimator makes the assumption that the percentage of Californians with doctorates is typical of other states; however, due to a variety of reasons, including economic, demographic, and educational infrastructure, there are considerable variations in educational attainment.
+2. Sampling Variability: If based on a sample, random variability can impact the ratio and estimation accuracy.
+3. Non-Uniform Distribution: Educational attainment isn’t evenly distributed across the U.S., so any areas' ratio may not apply to other states.
+4. Bias: When relationships are constant over all domains, the ratio technique performs well. The estimations will be skewed if the ratio is impacted by unobserved factors.
+
+These factors explain why using the ratio estimator across diverse states often leads to differences from actual numbers.
+
+
+\newpage
+# Appendix {-}
+
+# Instructions on obtaining the data
+
+To collect data from [IPUMS USA](https://usa.ipums.org/usa/), we first navigated to the IPUMS website and selected "IPUMS USA." We then clicked on "Get Data" and chose the "2022 ACS" sample under the "SELECT SAMPLE" section. To gather state-level data, we selected "HOUSEHOLD" followed by "GEOGRAPHIC" and added "STATEICP" to the cart. For individual-level data, we went to the "PERSON" section and added "EDUC" to the cart. After reviewing our selections by clicking "VIEW CART," we proceeded to "CREATE DATA EXTRACT." We changed the "DATA FORMAT" to ".csv" and clicked "SUBMIT EXTRACT." After logging in with the account, we received an email when the extract was ready for download. Finally, we downloaded the file to use in RStudio.
+
+
+
+# References
+
+
