@@ -5,7 +5,7 @@ author:
   - Jin Zhang
   - Siyuan Lu
 thanks: "Code and data are available at: https://github.com/YiTang2/IPUMS-USA-data.git"
-date: 3 October 2024
+date: today
 date-format: long
 abstract: "The number of respondents in each state with a doctorate as their highest level of education is examined in this document using data from the 2022 ACS IPUMS. Using data from California, we use the ratio estimators approach to estimate the total number of respondents in each state."
 format: pdf
