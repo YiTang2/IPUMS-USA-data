@@ -22,7 +22,6 @@ library(tidyverse)
 library(knitr)
 library(labelled)
 
-
 ipums_extract <- read_csv("usa_00001.csv")
 
 ipums_extract <- 
